@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Test Generator - Word (.doc)</title>
+    <title>Firebase Test Series Bulk JSON Generator</title>
     <style>
         body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
@@ -12,7 +12,7 @@
             margin: 0;
         }
         .container { 
-            max-width: 800px; 
+            max-width: 900px; 
             margin: 20px auto; 
             background: #ffffff; 
             padding: 25px; 
@@ -24,11 +24,19 @@
             color: #1a73e8; 
             margin-top: 0;
         }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
         textarea { 
             width: 100%; 
-            height: 350px; 
+            height: 400px; 
             padding: 15px; 
-            font-size: 15px; 
+            font-size: 14px; 
             border: 2px solid #cbd5e1; 
             border-radius: 8px; 
             box-sizing: border-box; 
@@ -39,13 +47,17 @@
             border-color: #1a73e8;
             outline: none;
         }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
         button { 
-            width: 100%; 
-            padding: 15px; 
-            margin-top: 20px; 
+            flex: 1;
+            padding: 12px; 
             background-color: #1a73e8; 
             color: #ffffff; 
-            font-size: 18px; 
+            font-size: 16px; 
             font-weight: bold;
             border: none; 
             border-radius: 8px; 
@@ -55,30 +67,58 @@
         button:hover {
             background-color: #1557b0;
         }
+        .btn-secondary {
+            background-color: #34a853;
+        }
+        .btn-secondary:hover {
+            background-color: #2b8743;
+        }
         #statusMessage {
             margin-top: 12px;
             text-align: center;
             font-weight: bold;
             color: #2e7d32;
         }
+        label {
+            font-weight: bold;
+            color: #333;
+            display: block;
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>Bulk Test Word Generator (100% Offline & No Errors)</h2>
-
-        <textarea id="inputText" placeholder="यहाँ प्रश्न पेस्ट करें...
-
-1. प्रश्न...
+        <h2>🔥 Firebase Test Series Bulk JSON Generator</h2>
+        
+        <div class="grid">
+            <div>
+                <label for="inputText">यहाँ प्रश्न पेस्ट करें:</label>
+                <textarea id="inputText" placeholder="1. प्रश्न...
 A. ऑप्शन 1
 B. ऑप्शन 2
 C. ऑप्शन 3
 D. ऑप्शन 4
 सही उत्तर - A
 व्याख्या - उत्तर की व्याख्या..."></textarea>
+                
+                <div class="btn-group">
+                    <button onclick="generateJSON()">JSON बनाएँ</button>
+                </div>
+            </div>
 
-        <button id="downloadBtn" onclick="generateAndDownloadWord()">Word फाइल डाउनलोड करें (.doc)</button>
+            <div>
+                <label for="outputText">Firebase Bulk JSON आउटपुट:</label>
+                <textarea id="outputText" readonly placeholder="यहाँ जनरेट किया हुआ JSON दिखेगा..."></textarea>
+                
+                <div class="btn-group">
+                    <button class="btn-secondary" onclick="downloadJSON()">JSON डाउनलोड करें</button>
+                    <button onclick="copyJSON()">कॉपी करें</button>
+                </div>
+            </div>
+        </div>
+
         <div id="statusMessage"></div>
     </div>
 
@@ -97,7 +137,13 @@ D. ऑप्शन 4
                 const qMatch = line.match(/^(\d+)[\.\)]\s*(.*)/);
                 if (qMatch) {
                     if (currentQ) questions.push(currentQ);
-                    currentQ = { id: qMatch[1], text: qMatch[2], options: {}, answer: '', solution: '' };
+                    currentQ = { 
+                        id: parseInt(qMatch[1]), 
+                        question: qMatch[2], 
+                        options: { A: "", B: "", C: "", D: "" }, 
+                        answer: "", 
+                        solution: "" 
+                    };
                     currentState = 'question';
                     continue;
                 }
@@ -105,7 +151,12 @@ D. ऑप्शन 4
                 // ऑप्शन ढूँढना (A., B., C., D.)
                 const optMatch = line.match(/^([A-D])[\.\)]\s*(.*)/);
                 if (optMatch && currentQ) {
-                    currentQ.options[optMatch[1]] = optMatch[2];
+                    currentQ.options[optMatch.groups ? optMatch.groups[1] : optMatch[1]] = optMatch[2];
+                    // Fallback key index check
+                    const key = optMatch[1].toUpperCase();
+                    if(currentQ.options.hasOwnProperty(key)) {
+                        currentQ.options[key] = optMatch[2];
+                    }
                     currentState = 'options';
                     continue;
                 }
@@ -128,12 +179,12 @@ D. ऑप्शन 4
 
                 if (currentQ) {
                     if (currentState === 'question') {
-                        currentQ.text += '<br>' + line;
+                        currentQ.question += '\n' + line;
                     } else if (currentState === 'solution') {
-                        currentQ.solution += '<br>' + line;
+                        currentQ.solution += '\n' + line;
                     } else if (currentState === 'options') {
-                        const lastOpt = Object.keys(currentQ.options).pop();
-                        if (lastOpt) {
+                        const lastOpt = Object.keys(currentQ.options).filter(k => currentQ.options[k] !== "").pop() || 'A';
+                        if (currentQ.options[lastOpt]) {
                             currentQ.options[lastOpt] += ' ' + line;
                         }
                     }
@@ -144,101 +195,64 @@ D. ऑप्शन 4
             return questions;
         }
 
-        function generateAndDownloadWord() {
-            const btn = document.getElementById('downloadBtn');
-            const status = document.getElementById('statusMessage');
+        let generatedDataString = "";
+
+        function generateJSON() {
             const text = document.getElementById('inputText').value;
+            const status = document.getElementById('statusMessage');
 
             if (!text.trim()) {
                 alert('कृपया पहले बॉक्स में प्रश्न पेस्ट करें!');
                 return;
             }
 
-            try {
-                btn.disabled = true;
-                btn.innerText = 'फाइल बन रही है...';
-                status.innerText = '';
+            const questions = parseInputText(text);
 
-                const questions = parseInputText(text);
-
-                if (questions.length === 0) {
-                    alert('कोई सही प्रश्न नहीं मिला! कृपया सुनिश्चित करें कि प्रश्न "1." से शुरू हों और ऑप्शन "A." से।');
-                    btn.disabled = false;
-                    btn.innerText = 'Word फाइल डाउनलोड करें (.doc)';
-                    return;
-                }
-
-                // Word Document HTML Structure for perfect formatting & Hindi support
-                let htmlBody = `
-                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-                    <head>
-                        <meta charset="utf-8">
-                        <title>Test Paper</title>
-                        <style>
-                            body { font-family: 'Mangal', 'Nirmala UI', Arial, sans-serif; font-size: 14pt; line-height: 1.6; color: #000000; padding: 20px; }
-                            .q-box { margin-bottom: 20px; }
-                            .question { font-weight: bold; margin-bottom: 8px; }
-                            .option { margin-left: 25px; margin-bottom: 5px; font-weight: normal; }
-                            .answer { font-weight: bold; color: #008000; margin-top: 5px; margin-left: 25px; }
-                            .solution { font-style: italic; color: #333333; margin-top: 5px; margin-left: 25px; }
-                        </style>
-                    </head>
-                    <body>
-                `;
-
-                questions.forEach((q, index) => {
-                    const qNum = index + 1;
-                    htmlBody += `<div class="q-box">`;
-                    htmlBody += `<div class="question">प्रश्न ${qNum}: ${q.text}</div>`;
-                    
-                    ['A', 'B', 'C', 'D'].forEach(optKey => {
-                        if (q.options[optKey]) {
-                            htmlBody += `<div class="option"><b>${optKey}.</b> ${q.options[optKey]}</div>`;
-                        }
-                    });
-
-                    if (q.answer) {
-                        htmlBody += `<div class="answer">सही उत्तर: ${q.answer}</div>`;
-                    }
-
-                    if (q.solution) {
-                        htmlBody += `<div class="solution">व्याख्या: ${q.solution}</div>`;
-                    }
-
-                    htmlBody += `</div><br>`;
-                });
-
-                htmlBody += `</body></html>`;
-
-                // UTF-8 BOM (\ufeff) ensures Hindi words are 100% supported in MS Word
-                const blob = new Blob(['\ufeff' + htmlBody], {
-                    type: 'application/msword;charset=utf-8'
-                });
-
-                const downloadUrl = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = downloadUrl;
-                a.download = `Bulk_Test_${Date.now()}.doc`;
-                document.body.appendChild(a);
-                a.click();
-
-                setTimeout(() => {
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(downloadUrl);
-                }, 100);
-
-                btn.disabled = false;
-                btn.innerText = 'Word फाइल डाउनलोड करें (.doc)';
-                status.innerText = '✅ फाइल सफलतापूर्वक डाउनलोड हो गई!';
-                setTimeout(() => status.innerText = '', 4000);
-
-            } catch (error) {
-                console.error(error);
-                alert("प्रोसेस एरर: " + error.message);
-                btn.disabled = false;
-                btn.innerText = 'Word फाइल डाउनलोड करें (.doc)';
+            if (questions.length === 0) {
+                alert('कोई सही प्रश्न नहीं मिला! कृपया सुनिश्चित करें कि प्रश्न "1." से शुरू हों और ऑप्शन "A." से।');
+                return;
             }
+
+            // Firebase friendly structure wrapper object or array
+            generatedDataString = JSON.stringify(questions, null, 4);
+            document.getElementById('outputText').value = generatedDataString;
+            status.innerText = `✅ कुल ${questions.length} प्रश्नों का JSON सफलतापूर्वक तैयार हो गया है!`;
+            setTimeout(() => status.innerText = '', 4000);
+        }
+
+        function downloadJSON() {
+            if (!generatedDataString) {
+                alert('पहले JSON जनरेट करें!');
+                return;
+            }
+
+            const blob = new Blob([generatedDataString], { type: 'application/json;charset=utf-8' });
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            a.download = `Test_Series_Bulk_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(downloadUrl);
+            }, 100);
+        }
+
+        function copyJSON() {
+            const outputText = document.getElementById('outputText');
+            if (!outputText.value) {
+                alert('कॉपी करने के लिए कुछ नहीं है!');
+                return;
+            }
+            outputText.select();
+            navigator.clipboard.writeText(outputText.value).then(() => {
+                const status = document.getElementById('statusMessage');
+                status.innerText = '📋 JSON क्लिपबोर्ड में कॉपी हो गया!';
+                setTimeout(() => status.innerText = '', 3000);
+            });
         }
     </script>
 </body>
