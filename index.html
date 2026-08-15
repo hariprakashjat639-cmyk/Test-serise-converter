@@ -3,52 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DOCX Bulk Test Generator</title>
-    
-    <!-- Dynamic Robust CDN Loader -->
-    <script>
-        function loadScript(url, success, error) {
-            const script = document.createElement('script');
-            script.src = url;
-            script.onload = success;
-            script.onerror = error;
-            document.head.appendChild(script);
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('downloadBtn');
-            const status = document.getElementById('statusMessage');
-            
-            if (window.docx) {
-                btn.disabled = false;
-                btn.innerText = 'DOCX डाउनलोड करें';
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerText = 'लाइब्रेरी लोड हो रही है...รอสักครู่...';
-            status.innerText = 'इंटरनेट से लाइब्रेरी कनेक्ट की जा रही है...';
-
-            // Primary CDN: jsDelivr (Very Fast & Stable)
-            loadScript("https://cdn.jsdelivr.net/npm/docx@8.2.3/build/index.js", () => {
-                btn.disabled = false;
-                btn.innerText = 'DOCX डाउनलोड करें';
-                status.innerText = '';
-            }, () => {
-                // Secondary Fallback CDN: unpkg
-                loadScript("https://unpkg.com/docx@8.2.3/build/index.js", () => {
-                    btn.disabled = false;
-                    btn.innerText = 'DOCX डाउनलोड करें';
-                    status.innerText = '';
-                }, () => {
-                    btn.disabled = true;
-                    btn.innerText = 'लोड विफल';
-                    status.innerText = '❌ DOCX लाइब्रेरी लोड नहीं हो पाई। कृपया इंटरनेट चेक करके पेज रिफ्रेश करें!';
-                });
-            });
-        });
-    </script>
-
+    <title>Bulk Test Generator - Word (.doc)</title>
     <style>
         body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
@@ -97,22 +52,21 @@
             cursor: pointer; 
             transition: background 0.2s ease;
         }
-        button:disabled {
-            background-color: #94a3b8;
-            cursor: wait;
+        button:hover {
+            background-color: #1557b0;
         }
         #statusMessage {
             margin-top: 12px;
             text-align: center;
             font-weight: bold;
-            color: #d97706;
+            color: #2e7d32;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>DOCX Bulk Test Generator</h2>
+        <h2>Bulk Test Word Generator (100% Offline & No Errors)</h2>
 
         <textarea id="inputText" placeholder="यहाँ प्रश्न पेस्ट करें...
 
@@ -124,7 +78,7 @@ D. ऑप्शन 4
 सही उत्तर - A
 व्याख्या - उत्तर की व्याख्या..."></textarea>
 
-        <button id="downloadBtn" onclick="generateAndDownloadDOCX()" disabled>लाइब्रेरी लोड हो रही है...</button>
+        <button id="downloadBtn" onclick="generateAndDownloadWord()">Word फाइल डाउनलोड करें (.doc)</button>
         <div id="statusMessage"></div>
     </div>
 
@@ -174,9 +128,9 @@ D. ऑप्शन 4
 
                 if (currentQ) {
                     if (currentState === 'question') {
-                        currentQ.text += '\n' + line;
+                        currentQ.text += '<br>' + line;
                     } else if (currentState === 'solution') {
-                        currentQ.solution += (currentQ.solution ? '\n' : '') + line;
+                        currentQ.solution += '<br>' + line;
                     } else if (currentState === 'options') {
                         const lastOpt = Object.keys(currentQ.options).pop();
                         if (lastOpt) {
@@ -190,7 +144,7 @@ D. ऑप्शन 4
             return questions;
         }
 
-        function generateAndDownloadDOCX() {
+        function generateAndDownloadWord() {
             const btn = document.getElementById('downloadBtn');
             const status = document.getElementById('statusMessage');
             const text = document.getElementById('inputText').value;
@@ -200,16 +154,9 @@ D. ऑप्शन 4
                 return;
             }
 
-            const docxLib = window.docx;
-            if (!docxLib) {
-                alert('DOCX लाइब्रेरी लोड नहीं हो पाई। कृपया इंटरनेट कनेक्शन चेक करें!');
-                return;
-            }
-
             try {
                 btn.disabled = true;
                 btn.innerText = 'फाइल बन रही है...';
-                status.style.color = '#2e7d32';
                 status.innerText = '';
 
                 const questions = parseInputText(text);
@@ -217,94 +164,80 @@ D. ऑप्शन 4
                 if (questions.length === 0) {
                     alert('कोई सही प्रश्न नहीं मिला! कृपया सुनिश्चित करें कि प्रश्न "1." से शुरू हों और ऑप्शन "A." से।');
                     btn.disabled = false;
-                    btn.innerText = 'DOCX डाउनलोड करें';
+                    btn.innerText = 'Word फाइल डाउनलोड करें (.doc)';
                     return;
                 }
 
-                const { Document, Packer, Paragraph, TextRun } = docxLib;
-                const docChildren = [];
+                // Word Document HTML Structure for perfect formatting & Hindi support
+                let htmlBody = `
+                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                    <head>
+                        <meta charset="utf-8">
+                        <title>Test Paper</title>
+                        <style>
+                            body { font-family: 'Mangal', 'Nirmala UI', Arial, sans-serif; font-size: 14pt; line-height: 1.6; color: #000000; padding: 20px; }
+                            .q-box { margin-bottom: 20px; }
+                            .question { font-weight: bold; margin-bottom: 8px; }
+                            .option { margin-left: 25px; margin-bottom: 5px; font-weight: normal; }
+                            .answer { font-weight: bold; color: #008000; margin-top: 5px; margin-left: 25px; }
+                            .solution { font-style: italic; color: #333333; margin-top: 5px; margin-left: 25px; }
+                        </style>
+                    </head>
+                    <body>
+                `;
 
                 questions.forEach((q, index) => {
                     const qNum = index + 1;
-
-                    // प्रश्न जोड़ें
-                    docChildren.push(new Paragraph({
-                        children: [
-                            new TextRun({ text: `प्रश्न ${qNum}: `, bold: true }),
-                            new TextRun({ text: q.text })
-                        ]
-                    }));
-
-                    // ऑप्शन जोड़ें
+                    htmlBody += `<div class="q-box">`;
+                    htmlBody += `<div class="question">प्रश्न ${qNum}: ${q.text}</div>`;
+                    
                     ['A', 'B', 'C', 'D'].forEach(optKey => {
                         if (q.options[optKey]) {
-                            docChildren.push(new Paragraph({
-                                children: [
-                                    new TextRun({ text: `${optKey}. `, bold: true }),
-                                    new TextRun({ text: q.options[optKey] })
-                                ]
-                            }));
+                            htmlBody += `<div class="option"><b>${optKey}.</b> ${q.options[optKey]}</div>`;
                         }
                     });
 
-                    // सही उत्तर जोड़ें
                     if (q.answer) {
-                        docChildren.push(new Paragraph({
-                            children: [
-                                new TextRun({ text: `सही उत्तर: `, bold: true }),
-                                new TextRun({ text: q.answer, bold: true })
-                            ]
-                        }));
+                        htmlBody += `<div class="answer">सही उत्तर: ${q.answer}</div>`;
                     }
 
-                    // व्याख्या जोड़ें
                     if (q.solution) {
-                        docChildren.push(new Paragraph({
-                            children: [
-                                new TextRun({ text: `व्याख्या: `, bold: true }),
-                                new TextRun({ text: q.solution })
-                            ]
-                        }));
+                        htmlBody += `<div class="solution">व्याख्या: ${q.solution}</div>`;
                     }
 
-                    // प्रश्नों के बीच खाली लाइन
-                    docChildren.push(new Paragraph({ text: "" }));
+                    htmlBody += `</div><br>`;
                 });
 
-                const doc = new Document({
-                    sections: [{ properties: {}, children: docChildren }]
+                htmlBody += `</body></html>`;
+
+                // UTF-8 BOM (\ufeff) ensures Hindi words are 100% supported in MS Word
+                const blob = new Blob(['\ufeff' + htmlBody], {
+                    type: 'application/msword;charset=utf-8'
                 });
 
-                Packer.toBlob(doc).then(blob => {
-                    const downloadUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = downloadUrl;
-                    a.download = `Bulk_Test_${Date.now()}.docx`;
-                    document.body.appendChild(a);
-                    a.click();
+                const downloadUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = downloadUrl;
+                a.download = `Bulk_Test_${Date.now()}.doc`;
+                document.body.appendChild(a);
+                a.click();
 
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(downloadUrl);
-                    }, 100);
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+                }, 100);
 
-                    btn.disabled = false;
-                    btn.innerText = 'DOCX डाउनलोड करें';
-                    status.innerText = '✅ फाइल सफलतापूर्वक डाउनलोड हो गई!';
-                    setTimeout(() => status.innerText = '', 4000);
-                }).catch(err => {
-                    console.error(err);
-                    alert('फाइल सेव करने में समस्या: ' + err.message);
-                    btn.disabled = false;
-                    btn.innerText = 'DOCX डाउनलोड करें';
-                });
+                btn.disabled = false;
+                btn.innerText = 'Word फाइल डाउनलोड करें (.doc)';
+                status.innerText = '✅ फाइल सफलतापूर्वक डाउनलोड हो गई!';
+                setTimeout(() => status.innerText = '', 4000);
 
             } catch (error) {
                 console.error(error);
                 alert("प्रोसेस एरर: " + error.message);
                 btn.disabled = false;
-                btn.innerText = 'DOCX डाउनलोड करें';
+                btn.innerText = 'Word फाइल डाउनलोड करें (.doc)';
             }
         }
     </script>
