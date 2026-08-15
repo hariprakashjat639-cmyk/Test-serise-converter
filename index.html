@@ -4,8 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOCX Bulk Test Generator</title>
-    <!-- DOCX Stable JS Library -->
-    <script src="https://unpkg.com/docx@8.2.3/build/index.js"></script>
+    
+    <!-- Dynamic Robust CDN Loader -->
+    <script>
+        function loadScript(url, success, error) {
+            const script = document.createElement('script');
+            script.src = url;
+            script.onload = success;
+            script.onerror = error;
+            document.head.appendChild(script);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('downloadBtn');
+            const status = document.getElementById('statusMessage');
+            
+            if (window.docx) {
+                btn.disabled = false;
+                btn.innerText = 'DOCX डाउनलोड करें';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'लाइब्रेरी लोड हो रही है...รอสักครู่...';
+            status.innerText = 'इंटरनेट से लाइब्रेरी कनेक्ट की जा रही है...';
+
+            // Primary CDN: jsDelivr (Very Fast & Stable)
+            loadScript("https://cdn.jsdelivr.net/npm/docx@8.2.3/build/index.js", () => {
+                btn.disabled = false;
+                btn.innerText = 'DOCX डाउनलोड करें';
+                status.innerText = '';
+            }, () => {
+                // Secondary Fallback CDN: unpkg
+                loadScript("https://unpkg.com/docx@8.2.3/build/index.js", () => {
+                    btn.disabled = false;
+                    btn.innerText = 'DOCX डाउनलोड करें';
+                    status.innerText = '';
+                }, () => {
+                    btn.disabled = true;
+                    btn.innerText = 'लोड विफल';
+                    status.innerText = '❌ DOCX लाइब्रेरी लोड नहीं हो पाई। कृपया इंटरनेट चेक करके पेज रिफ्रेश करें!';
+                });
+            });
+        });
+    </script>
+
     <style>
         body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
@@ -55,14 +98,14 @@
             transition: background 0.2s ease;
         }
         button:disabled {
-            background-color: #a0c3ff;
+            background-color: #94a3b8;
             cursor: wait;
         }
         #statusMessage {
             margin-top: 12px;
             text-align: center;
             font-weight: bold;
-            color: #2e7d32;
+            color: #d97706;
         }
     </style>
 </head>
@@ -81,7 +124,7 @@ D. ऑप्शन 4
 सही उत्तर - A
 व्याख्या - उत्तर की व्याख्या..."></textarea>
 
-        <button id="downloadBtn" onclick="generateAndDownloadDOCX()">DOCX डाउनलोड करें</button>
+        <button id="downloadBtn" onclick="generateAndDownloadDOCX()" disabled>लाइब्रेरी लोड हो रही है...</button>
         <div id="statusMessage"></div>
     </div>
 
@@ -159,13 +202,14 @@ D. ऑप्शन 4
 
             const docxLib = window.docx;
             if (!docxLib) {
-                alert('DOCX लाइब्रेरी लोड नहीं हो पाई। पेज रिफ्रेश करके दोबारा प्रयास करें!');
+                alert('DOCX लाइब्रेरी लोड नहीं हो पाई। कृपया इंटरनेट कनेक्शन चेक करें!');
                 return;
             }
 
             try {
                 btn.disabled = true;
                 btn.innerText = 'फाइल बन रही है...';
+                status.style.color = '#2e7d32';
                 status.innerText = '';
 
                 const questions = parseInputText(text);
