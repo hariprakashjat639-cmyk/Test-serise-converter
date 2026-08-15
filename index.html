@@ -3,98 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Test Series Bulk JSON Generator</title>
+    <title>Advanced Test Series Custom Format Generator</title>
     <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --success-hover: #059669;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --border-color: #cbd5e1;
+        }
+
         body { 
-            font-family: 'Segoe UI', Arial, sans-serif; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             padding: 20px; 
-            background-color: #f4f6f9; 
+            background: var(--bg-gradient); 
+            min-height: 100vh;
             margin: 0;
+            color: var(--text-main);
         }
+
         .container { 
-            max-width: 900px; 
+            max-width: 1050px; 
             margin: 20px auto; 
-            background: #ffffff; 
-            padding: 25px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); 
         }
+
         h2 { 
             text-align: center; 
-            color: #1a73e8; 
+            color: var(--primary); 
             margin-top: 0;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 15px;
         }
+
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 25px;
         }
+
         @media (max-width: 768px) {
             .grid { grid-template-columns: 1fr; }
         }
+
+        .pane {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: #475569;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
         textarea { 
             width: 100%; 
-            height: 400px; 
+            height: 420px; 
             padding: 15px; 
             font-size: 14px; 
-            border: 2px solid #cbd5e1; 
-            border-radius: 8px; 
+            border: 2px solid var(--border-color); 
+            border-radius: 10px; 
             box-sizing: border-box; 
             resize: vertical;
             font-family: inherit;
+            background-color: #fafafa;
+            transition: all 0.3s ease;
         }
+
         textarea:focus {
-            border-color: #1a73e8;
+            border-color: var(--primary);
+            background-color: #ffffff;
             outline: none;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
         }
+
         .btn-group {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             margin-top: 15px;
         }
+
         button { 
             flex: 1;
-            padding: 12px; 
-            background-color: #1a73e8; 
+            padding: 14px; 
+            background-color: var(--primary); 
             color: #ffffff; 
             font-size: 16px; 
-            font-weight: bold;
+            font-weight: 600;
             border: none; 
-            border-radius: 8px; 
+            border-radius: 10px; 
             cursor: pointer; 
-            transition: background 0.2s ease;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
         }
+
         button:hover {
-            background-color: #1557b0;
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
         }
+
         .btn-secondary {
-            background-color: #34a853;
+            background-color: var(--success);
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
         }
+
         .btn-secondary:hover {
-            background-color: #2b8743;
+            background-color: var(--success-hover);
         }
+
         #statusMessage {
-            margin-top: 12px;
+            margin-top: 20px;
             text-align: center;
-            font-weight: bold;
-            color: #2e7d32;
-        }
-        label {
-            font-weight: bold;
-            color: #333;
-            display: block;
-            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--success);
+            font-size: 15px;
+            min-height: 24px;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>🔥 Firebase Test Series Bulk JSON Generator</h2>
+        <h2>✨ Custom Test Series Format Generator</h2>
         
         <div class="grid">
-            <div>
-                <label for="inputText">यहाँ प्रश्न पेस्ट करें:</label>
+            <!-- Input Pane -->
+            <div class="pane">
+                <label for="inputText">यहाँ रॉ (Raw) प्रश्न पेस्ट करें:</label>
                 <textarea id="inputText" placeholder="1. प्रश्न...
 A. ऑप्शन 1
 B. ऑप्शन 2
@@ -104,17 +152,18 @@ D. ऑप्शन 4
 व्याख्या - उत्तर की व्याख्या..."></textarea>
                 
                 <div class="btn-group">
-                    <button onclick="generateJSON()">JSON बनाएँ</button>
+                    <button onclick="generateCustomFormat()">फॉर्मेट में बदलें</button>
                 </div>
             </div>
 
-            <div>
-                <label for="outputText">Firebase Bulk JSON आउटपुट:</label>
-                <textarea id="outputText" readonly placeholder="यहाँ जनरेट किया हुआ JSON दिखेगा..."></textarea>
+            <!-- Output Pane -->
+            <div class="pane">
+                <label for="outputText">आउटपुट फॉर्मेट:</label>
+                <textarea id="outputText" readonly placeholder="यहाँ आपका कन्वर्ट किया हुआ फॉर्मेट दिखेगा..."></textarea>
                 
                 <div class="btn-group">
-                    <button class="btn-secondary" onclick="downloadJSON()">JSON डाउनलोड करें</button>
-                    <button onclick="copyJSON()">कॉपी करें</button>
+                    <button class="btn-secondary" onclick="downloadFile()">फाइल डाउनलोड करें</button>
+                    <button onclick="copyText()">कॉपी करें</button>
                 </div>
             </div>
         </div>
@@ -138,8 +187,8 @@ D. ऑप्शन 4
                 if (qMatch) {
                     if (currentQ) questions.push(currentQ);
                     currentQ = { 
-                        id: parseInt(qMatch[1]), 
-                        question: qMatch[2], 
+                        id: qMatch[1], 
+                        text: qMatch[2], 
                         options: { A: "", B: "", C: "", D: "" }, 
                         answer: "", 
                         solution: "" 
@@ -151,8 +200,6 @@ D. ऑप्शन 4
                 // ऑप्शन ढूँढना (A., B., C., D.)
                 const optMatch = line.match(/^([A-D])[\.\)]\s*(.*)/);
                 if (optMatch && currentQ) {
-                    currentQ.options[optMatch.groups ? optMatch.groups[1] : optMatch[1]] = optMatch[2];
-                    // Fallback key index check
                     const key = optMatch[1].toUpperCase();
                     if(currentQ.options.hasOwnProperty(key)) {
                         currentQ.options[key] = optMatch[2];
@@ -179,7 +226,7 @@ D. ऑप्शन 4
 
                 if (currentQ) {
                     if (currentState === 'question') {
-                        currentQ.question += '\n' + line;
+                        currentQ.text += '\n' + line;
                     } else if (currentState === 'solution') {
                         currentQ.solution += '\n' + line;
                     } else if (currentState === 'options') {
@@ -195,9 +242,9 @@ D. ऑप्शन 4
             return questions;
         }
 
-        let generatedDataString = "";
+        let generatedString = "";
 
-        function generateJSON() {
+        function generateCustomFormat() {
             const text = document.getElementById('inputText').value;
             const status = document.getElementById('statusMessage');
 
@@ -213,25 +260,38 @@ D. ऑप्शन 4
                 return;
             }
 
-            // Firebase friendly structure wrapper object or array
-            generatedDataString = JSON.stringify(questions, null, 4);
-            document.getElementById('outputText').value = generatedDataString;
-            status.innerText = `✅ कुल ${questions.length} प्रश्नों का JSON सफलतापूर्वक तैयार हो गया है!`;
+            let result = "#Hindi_directions\n\n";
+
+            questions.forEach((q, index) => {
+                const qNum = index + 1;
+                result += `#Question ${qNum}\n`;
+                result += `${q.text}\n`;
+                result += `#Options ###A\n${q.options.A || ''}\n`;
+                result += `###B\n${q.options.B || ''}\n`;
+                result += `###C\n${q.options.C || ''}\n`;
+                result += `###D\n${q.options.D || ''}\n`;
+                result += `#Correct_option\n${q.answer}\n`;
+                result += `#Solution\n${q.solution}\n\n`;
+            });
+
+            generatedString = result.trim();
+            document.getElementById('outputText').value = generatedString;
+            status.innerText = `✅ कुल ${questions.length} प्रश्नों को आपके फॉर्मेट में सफलताપूर्वक बदल दिया गया है!`;
             setTimeout(() => status.innerText = '', 4000);
         }
 
-        function downloadJSON() {
-            if (!generatedDataString) {
-                alert('पहले JSON जनरेट करें!');
+        function downloadFile() {
+            if (!generatedString) {
+                alert('पहले फॉर्मेट जनरेट करें!');
                 return;
             }
 
-            const blob = new Blob([generatedDataString], { type: 'application/json;charset=utf-8' });
+            const blob = new Blob([generatedString], { type: 'text/plain;charset=utf-8' });
             const downloadUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = downloadUrl;
-            a.download = `Test_Series_Bulk_${Date.now()}.json`;
+            a.download = `Formatted_Test_Series_${Date.now()}.txt`;
             document.body.appendChild(a);
             a.click();
 
@@ -241,7 +301,7 @@ D. ऑप्शन 4
             }, 100);
         }
 
-        function copyJSON() {
+        function copyText() {
             const outputText = document.getElementById('outputText');
             if (!outputText.value) {
                 alert('कॉपी करने के लिए कुछ नहीं है!');
@@ -250,7 +310,7 @@ D. ऑप्शन 4
             outputText.select();
             navigator.clipboard.writeText(outputText.value).then(() => {
                 const status = document.getElementById('statusMessage');
-                status.innerText = '📋 JSON क्लिपबोर्ड में कॉपी हो गया!';
+                status.innerText = '📋 फॉर्मेट क्लिपबोर्ड में कॉपी हो गया!';
                 setTimeout(() => status.innerText = '', 3000);
             });
         }
