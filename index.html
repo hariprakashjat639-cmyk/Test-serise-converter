@@ -134,6 +134,11 @@ D. ऑप्शन 4
                         currentQ.text += '\n' + line;
                     } else if (currentState === 'solution') {
                         currentQ.solution += (currentQ.solution ? '\n' : '') + line;
+                    } else if (currentState === 'options') {
+                        const lastOpt = Object.keys(currentQ.options).pop();
+                        if (lastOpt) {
+                            currentQ.options[lastOpt] += ' ' + line;
+                        }
                     }
                 }
             }
@@ -159,7 +164,6 @@ D. ऑप्शन 4
             }
 
             try {
-                // UI अपडेट (यूजर को पता चले कि काम हो रहा है)
                 btn.disabled = true;
                 btn.innerText = 'फाइल बन रही है...';
                 status.innerText = '';
@@ -173,43 +177,60 @@ D. ऑप्शन 4
                     return;
                 }
 
-                const { Document, Packer, Paragraph } = docxLib;
+                const { Document, Packer, Paragraph, TextRun } = docxLib;
                 const docChildren = [];
-
-                docChildren.push(new Paragraph({ text: "#Hindi_directions" }));
 
                 questions.forEach((q, index) => {
                     const qNum = index + 1;
 
-                    docChildren.push(new Paragraph({ text: `#Question ${qNum}` }));
-                    q.text.split('\n').forEach(l => docChildren.push(new Paragraph({ text: l })));
+                    // प्रश्न जोड़ें
+                    docChildren.push(new Paragraph({
+                        children: [
+                            new TextRun({ text: `प्रश्न ${qNum}: `, bold: true }),
+                            new TextRun({ text: q.text })
+                        ]
+                    }));
 
-                    docChildren.push(new Paragraph({ text: "#Options ###A" }));
-                    docChildren.push(new Paragraph({ text: q.options['A'] || '' }));
-
-                    docChildren.push(new Paragraph({ text: "###B" }));
-                    docChildren.push(new Paragraph({ text: q.options['B'] || '' }));
-
-                    docChildren.push(new Paragraph({ text: "###C" }));
-                    docChildren.push(new Paragraph({ text: q.options['C'] || '' }));
-
-                    docChildren.push(new Paragraph({ text: "###D" }));
-                    docChildren.push(new Paragraph({ text: q.options['D'] || '' }));
-
-                    docChildren.push(new Paragraph({ text: "#Correct_option" }));
-                    docChildren.push(new Paragraph({ text: q.answer || '' }));
-
-                    docChildren.push(new Paragraph({ text: "#Solution" }));
-                    q.solution.split('\n').forEach(l => {
-                        if (l.trim()) docChildren.push(new Paragraph({ text: l.trim() }));
+                    // ऑप्शन जोड़ें
+                    ['A', 'B', 'C', 'D'].forEach(optKey => {
+                        if (q.options[optKey]) {
+                            docChildren.push(new Paragraph({
+                                children: [
+                                    new TextRun({ text: `${optKey}. `, bold: true }),
+                                    new TextRun({ text: q.options[optKey] })
+                                ]
+                            }));
+                        }
                     });
+
+                    // सही उत्तर जोड़ें
+                    if (q.answer) {
+                        docChildren.push(new Paragraph({
+                            children: [
+                                new TextRun({ text: `सही उत्तर: `, bold: true }),
+                                new TextRun({ text: q.answer, bold: true })
+                            ]
+                        }));
+                    }
+
+                    // व्याख्या जोड़ें
+                    if (q.solution) {
+                        docChildren.push(new Paragraph({
+                            children: [
+                                new TextRun({ text: `व्याख्या: `, bold: true }),
+                                new TextRun({ text: q.solution })
+                            ]
+                        }));
+                    }
+
+                    // प्रश्नों के बीच खाली लाइन
+                    docChildren.push(new Paragraph({ text: "" }));
                 });
 
                 const doc = new Document({
                     sections: [{ properties: {}, children: docChildren }]
                 });
 
-                // Direct Browser Download (Promise base - मोबाइल ब्राउज़र ब्लॉकिंग से बचने के लिए)
                 Packer.toBlob(doc).then(blob => {
                     const downloadUrl = URL.createObjectURL(blob);
                     const a = document.createElement('a');
