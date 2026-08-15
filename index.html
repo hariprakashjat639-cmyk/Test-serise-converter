@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Test Series Generator</title>
+    <!-- DOCX बनाने के लिए आवश्यक लाइब्रेरी -->
+    <script src="https://unpkg.com/docx@8.2.3/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 20px; 
+            background-color: #f0f2f5; 
+        }
+        .container { 
+            max-width: 850px; 
+            margin: auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        }
+        h1 { text-align: center; color: #1a73e8; }
+        textarea { 
+            width: 100%; 
+            height: 350px; 
+            padding: 15px; 
+            font-size: 16px; 
+            border: 2px solid #ccc; 
+            border-radius: 6px; 
+            resize: vertical; 
+            box-sizing: border-box;
+        }
+        textarea:focus {
+            border-color: #1a73e8;
+            outline: none;
+        }
+        button { 
+            display: block; 
+            width: 100%; 
+            padding: 15px; 
+            margin-top: 20px; 
+            background-color: #1a73e8; 
+            color: white; 
+            font-size: 18px; 
+            font-weight: bold;
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #1557b0; }
+        .instructions { 
+            background: #e8f0fe; 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin-bottom: 20px; 
+            font-size: 15px; 
+            color: #3c4043;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DOCX Bulk Converter</h1>
+        <div class="instructions">
+            <strong>निर्देश:</strong> अपने सभी प्रश्नों को नीचे दिए गए बॉक्स में एक साथ पेस्ट करें। फॉर्मेट बिल्कुल साधारण रखें जैसा आपने तय किया है (1. प्रश्न, A. ऑप्शन, सही उत्तर - A, व्याख्या - ...)। यह टूल अपने आप उन्हें आपके ऐप के फॉर्मेट में बदल देगा।
+        </div>
+        <textarea id="inputText" placeholder="उदाहरण: 
+1. श्वसन तंत्र को प्रभावित करने वाले...
+A. जीवाणु
+B. विषाणु..."></textarea>
+        <button onclick="generateDOCX()">DOCX डाउनलोड करें</button>
+    </div>
+
+    <script>
+        // टेक्स्ट को समझने और अलग-अलग हिस्सों में बाँटने का फंक्शन
+        function parseText(text) {
+            const lines = text.split('\n');
+            const questions = [];
+            let currentQ = null;
+            let currentState = 'none'; 
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                // प्रश्न ढूँढना (जैसे 1. , 2. )
+                const qMatch = line.match(/^(\d+)\.\s*(.*)/);
+                if (qMatch) {
+                    if (currentQ) questions.push(currentQ);
+                    currentQ = { id: qMatch[1], text: qMatch[2], options: {}, answer: '', solution: '' };
+                    currentState = 'question';
+                    continue;
+                }
+
+                // ऑप्शन ढूँढना (A., B., C., D.)
+                const optMatch = line.match(/^([A-D])\.\s*(.*)/);
+                if (optMatch && currentQ) {
+                    currentQ.options[optMatch[1]] = optMatch[2];
+                    currentState = 'options';
+                    continue;
+                }
+
+                // सही उत्तर ढूँढना
+                const ansMatch = line.match(/^सही उत्तर\s*-\s*([A-D])/);
+                if (ansMatch && currentQ) {
+                    currentQ.answer = ansMatch[1];
+                    currentState = 'answer';
+                    continue;
+                }
+
+                // व्याख्या ढूँढना
+                const solMatch = line.match(/^व्याख्या\s*-\s*(.*)/);
+                if (solMatch !== null && currentQ) {
+                    currentQ.solution = solMatch[1] ? solMatch[1] : '';
+                    currentState = 'solution';
+                    continue;
+                }
+
+                // अगर प्रश्न या व्याख्या एक से ज्यादा लाइन की है
+                if (currentQ) {
+                    if (currentState === 'question') {
+                        currentQ.text += '\n' + line;
+                    } else if (currentState === 'solution') {
+                        currentQ.solution += (currentQ.solution ? '\n' : '') + line;
+                    }
+                }
+            }
+            if (currentQ) questions.push(currentQ);
+            return questions;
+        }
+
+        // DOCX फाइल बनाने का फंक्शन
+        async function generateDOCX() {
+            const text = document.getElementById('inputText').value;
+            if (!text.trim()) {
+                alert('कृपया बॉक्स में टेक्स्ट डालें!');
+                return;
+            }
+
+            const questions = parseText(text);
+            if (questions.length === 0) {
+                alert('कोई सही फॉर्मेट वाला प्रश्न नहीं मिला। कृपया फॉर्मेट चेक करें।');
+                return;
+            }
+
+            const { Document, Packer, Paragraph } = docx;
+            const docChildren = [];
+
+            // शुरुआत में हिंदी डायरेक्शन टैग
+            docChildren.push(new Paragraph({ text: "#Hindi_directions" }));
+
+            // सभी प्रश्नों को लूप में चलाना
+            questions.forEach((q, index) => {
+                const qNum = index + 1; // सीरीज नंबर 1, 2, 3...
+
+                // प्रश्न
+                docChildren.push(new Paragraph({ text: `#Question ${qNum}` }));
+                const qLines = q.text.split('\n');
+                qLines.forEach(l => docChildren.push(new Paragraph({ text: l })));
+
+                // ऑप्शन
+                docChildren.push(new Paragraph({ text: `#Options ###A` }));
+                docChildren.push(new Paragraph({ text: q.options['A'] || '' }));
+
+                docChildren.push(new Paragraph({ text: `###B` }));
+                docChildren.push(new Paragraph({ text: q.options['B'] || '' }));
+
+                docChildren.push(new Paragraph({ text: `###C` }));
+                docChildren.push(new Paragraph({ text: q.options['C'] || '' }));
+
+                docChildren.push(new Paragraph({ text: `###D` }));
+                docChildren.push(new Paragraph({ text: q.options['D'] || '' }));
+
+                // उत्तर
+                docChildren.push(new Paragraph({ text: `#Correct_option` }));
+                docChildren.push(new Paragraph({ text: q.answer }));
+
+                // व्याख्या
+                docChildren.push(new Paragraph({ text: `#Solution` }));
+                const solLines = q.solution.split('\n');
+                solLines.forEach(l => {
+                    if (l.trim()) {
+                        docChildren.push(new Paragraph({ text: l.trim() }));
+                    }
+                });
+            });
+
+            // डॉक्यूमेंट बनाना
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: docChildren
+                }]
+            });
+
+            // डाउनलोड ट्रिगर करना
+            Packer.toBlob(doc).then(blob => {
+                saveAs(blob, "Bulk_Upload_Format.docx");
+            });
+        }
+    </script>
+</body>
+</html>
