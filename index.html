@@ -144,12 +144,12 @@
             <div class="pane">
                 <label for="inputText">यहाँ रॉ (Raw) प्रश्न पेस्ट करें:</label>
                 <textarea id="inputText" placeholder="1. प्रश्न...
-A. ऑप्शन 1
-B. ऑप्शन 2
-C. ऑप्शन 3
-D. ऑप्शन 4
-सही उत्तर - A
-व्याख्या - उत्तर की व्याख्या..."></textarea>
+(a) ऑप्शन 1
+(b) ऑप्शन 2
+(c) ऑप्शन 3
+(d) ऑप्शन 4
+उत्तर: (d) सही उत्तर...
+व्याख्या: उत्तर की व्याख्या..."></textarea>
                 
                 <div class="btn-group">
                     <button onclick="generateCustomFormat()">फॉर्मेट में बदलें</button>
@@ -197,8 +197,8 @@ D. ऑप्शन 4
                     continue;
                 }
 
-                // ऑप्शन ढूँढना (A., B., C., D.)
-                const optMatch = line.match(/^([A-D])[\.\)]\s*(.*)/);
+                // ऑप्शन ढूँढना (A., a., (a), (A) आदि)
+                const optMatch = line.match(/^[\(\[]?([A-Da-d])[\)\]][\.\s]?(.*)/) || line.match(/^([A-Da-d])[\.\)]\s*(.*)/);
                 if (optMatch && currentQ) {
                     const key = optMatch[1].toUpperCase();
                     if(currentQ.options.hasOwnProperty(key)) {
@@ -208,16 +208,22 @@ D. ऑप्शन 4
                     continue;
                 }
 
-                // उत्तर ढूँढना
-                const ansMatch = line.match(/^(?:सही उत्तर|Correct Option|Answer)\s*[:\-]\s*([A-D])/i);
+                // उत्तर ढूँढना (उत्तर: (d) या उत्तर - A आदि)
+                const ansMatch = line.match(/^(?:सही उत्तर|उत्तर|Correct Option|Answer)\s*[:\-]\s*(?:[\(\[]?([A-Da-d])[\)\]]?)?(.*)/i);
                 if (ansMatch && currentQ) {
-                    currentQ.answer = ansMatch[1].toUpperCase();
+                    if (ansMatch[1]) {
+                        currentQ.answer = ansMatch[1].toUpperCase();
+                    } else {
+                        // यदि सिर्फ अक्षर बिना कोष्ठक के हो
+                        const directLetter = line.match(/([A-Da-d])/);
+                        if (directLetter) currentQ.answer = directLetter[1].toUpperCase();
+                    }
                     currentState = 'answer';
                     continue;
                 }
 
                 // व्याख्या ढूँढना
-                const solMatch = line.match(/^(?:व्याख्या|Solution)\s*[:\-]\s*(.*)/i);
+                const solMatch = line.match(/^(?:व्याख्या|स्पष्टीकरण|Solution)\s*[:\-]\s*(.*)/i);
                 if (solMatch !== null && currentQ) {
                     currentQ.solution = solMatch[1] ? solMatch[1] : '';
                     currentState = 'solution';
@@ -256,7 +262,7 @@ D. ऑप्शन 4
             const questions = parseInputText(text);
 
             if (questions.length === 0) {
-                alert('कोई सही प्रश्न नहीं मिला! कृपया सुनिश्चित करें कि प्रश्न "1." से शुरू हों और ऑप्शन "A." से।');
+                alert('कोई सही प्रश्न नहीं मिला! कृपया सुनिश्चित करें कि प्रश्न "1." से शुरू हों और ऑप्शन "(a)" या "A." से।');
                 return;
             }
 
@@ -276,7 +282,7 @@ D. ऑप्शन 4
 
             generatedString = result.trim();
             document.getElementById('outputText').value = generatedString;
-            status.innerText = `✅ कुल ${questions.length} प्रश्नों को आपके फॉर्मेट में सफलताપूर्वक बदल दिया गया है!`;
+            status.innerText = `✅ कुल ${questions.length} प्रश्नों को आपके फॉर्मेट में सफलतापूर्वक बदल दिया गया है!`;
             setTimeout(() => status.innerText = '', 4000);
         }
 
