@@ -143,13 +143,13 @@
             <!-- Input Pane -->
             <div class="pane">
                 <label for="inputText">यहाँ रॉ (Raw) प्रश्न पेस्ट करें:</label>
-                <textarea id="inputText" placeholder="1. प्रश्न...
-(a) ऑप्शन 1
-(b) ऑप्शन 2
-(c) ऑप्शन 3
-(d) ऑप्शन 4
-उत्तर: (d) सही उत्तर...
-व्याख्या: उत्तर की व्याख्या..."></textarea>
+                <textarea id="inputText" placeholder="प्रश्न 1: प्रश्न का नाम...
+(अ) ऑप्शन 1
+(ब) ऑप्शन 2
+(स) ऑप्शन 3
+(द) ऑप्शन 4
+सही उत्तर: (स) सही उत्तर का विवरण...
+व्याख्या: व्याख्या की जानकारी..."></textarea>
                 
                 <div class="btn-group">
                     <button onclick="generateCustomFormat()">फॉर्मेट में बदलें</button>
@@ -172,6 +172,26 @@
     </div>
 
     <script>
+        // हिंदी वर्णमाला के विकल्पों को A, B, C, D में बदलने का फ़ंक्शन
+        function normalizeOptionKey(symbol) {
+            if (!symbol) return null;
+            symbol = symbol.trim().toLowerCase();
+            
+            // अंग्रेजी विकल्प
+            if (symbol === 'a') return 'A';
+            if (symbol === 'b') return 'B';
+            if (symbol === 'c') return 'C';
+            if (symbol === 'd') return 'D';
+
+            // हिंदी विकल्प (अ/ब/स/द या क/ख/ग/घ)
+            if (symbol === 'अ' || symbol === 'क') return 'A';
+            if (symbol === 'ब' || symbol === 'ख') return 'B';
+            if (symbol === 'स' || symbol === 'ग') return 'C';
+            if (symbol === 'द' || symbol === 'घ') return 'D';
+
+            return null;
+        }
+
         function parseInputText(text) {
             const lines = text.split('\n');
             const questions = [];
@@ -182,8 +202,8 @@
                 let line = lines[i].trim();
                 if (!line) continue;
 
-                // स्मार्ट प्रश्न पहचान (आगे-पीछे थोड़ा स्पेस, ब्रैकेट या डैश हो तो भी पकड़ेगा)
-                const qMatch = line.match(/^[\(\[]?\s*(\d+)[\.\)]\s*(.*)/);
+                // 1. प्रश्न पहचान (जैसे: "प्रश्न 1:", "Q1.", "1.")
+                const qMatch = line.match(/^(?:प्रश्न|Q|Question)?\s*[\(\[]?\s*(\d+)[\.\:\)]\s*(.*)/i);
                 if (qMatch) {
                     if (currentQ) questions.push(currentQ);
                     currentQ = { 
@@ -197,31 +217,33 @@
                     continue;
                 }
 
-                // स्मार्ट ऑप्शन पहचान (a., A., (a), [a] आदि को लचीले ढंग से ट्रैक करेगा)
-                const optMatch = line.match(/^[\(\[]?\s*([A-Da-d])\s*[\)\]][\.\s]?(.*)/) || line.match(/^([A-Da-d])[\.\)]\s*(.*)/);
+                // 2. विकल्प पहचान (जैसे: (a), (अ), (1), A., a), अ.)
+                const optMatch = line.match(/^[\(\[]?\s*([A-Da-d|अ|ब|स|द|क|ख|ग|घ])\s*[\)\]\.\:]\s*(.*)/);
                 if (optMatch && currentQ) {
-                    const key = optMatch[1].toUpperCase();
-                    if(currentQ.options.hasOwnProperty(key)) {
-                        currentQ.options[key] = optMatch[2];
+                    const mappedKey = normalizeOptionKey(optMatch[1]);
+                    if (mappedKey && currentQ.options.hasOwnProperty(mappedKey)) {
+                        currentQ.options[mappedKey] = optMatch[2];
+                        currentState = 'options';
+                        continue;
                     }
-                    currentState = 'options';
-                    continue;
                 }
 
-                // स्मार्ट उत्तर पहचान (उत्तर, Ans, Correct आदि)
-                const ansMatch = line.match(/^(?:सही उत्तर|उत्तर|Correct Option|Answer|Ans)\s*[:\-]?\s*(?:[\(\[]?([A-Da-d])[\)\]]?)?(.*)/i);
+                // 3. उत्तर पहचान (जैसे: सही उत्तर: (स), Ans: A, उत्तर - B)
+                const ansMatch = line.match(/^(?:सही\s*उत्तर|उत्तर|Correct\s*Option|Answer|Ans)\s*[:\-]?\s*(?:[\(\[]?\s*([A-Da-d|अ|ब|स|द|क|ख|ग|घ])\s*[\)\]]?)?(.*)/i);
                 if (ansMatch && currentQ) {
+                    let key = null;
                     if (ansMatch[1]) {
-                        currentQ.answer = ansMatch[1].toUpperCase();
+                        key = normalizeOptionKey(ansMatch[1]);
                     } else {
-                        const directLetter = line.match(/([A-Da-d])/);
-                        if (directLetter) currentQ.answer = directLetter[1].toUpperCase();
+                        const directMatch = line.match(/([A-Da-d|अ|ब|स|द|क|ख|ग|घ])/);
+                        if (directMatch) key = normalizeOptionKey(directMatch[1]);
                     }
+                    if (key) currentQ.answer = key;
                     currentState = 'answer';
                     continue;
                 }
 
-                // स्मार्ट व्याख्या पहचान (व्याख्या, Solution, स्पष्टीकरण आदि)
+                // 4. व्याख्या/सॉल्यूशन पहचान
                 const solMatch = line.match(/^(?:व्याख्या|स्पष्टीकरण|Solution|Exp)\s*[:\-]?\s*(.*)/i);
                 if (solMatch !== null && currentQ) {
                     currentQ.solution = solMatch[1] ? solMatch[1] : '';
@@ -229,7 +251,7 @@
                     continue;
                 }
 
-                // यदि लाइन थोड़ी बहुत लंबी हो या नीचे लाइन में बंटी हो तो यह उसे संभाल लेगा
+                // 5. यदि कोई पंक्ति कई लाइनों में बंटी हो
                 if (currentQ) {
                     if (currentState === 'question') {
                         currentQ.text += '\n' + line;
@@ -262,7 +284,7 @@
             const questions = parseInputText(text);
 
             if (questions.length === 0) {
-                alert('प्रश्न पहचानने में समस्या आ रही है। कृपया सुनिश्चित करें कि प्रश्न नंबर (जैसे 1., 2.) से शुरू हों।');
+                alert('प्रश्न पहचानने में समस्या आ रही है। कृपया इनपुट को सही से चेक करें।');
                 return;
             }
 
