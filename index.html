@@ -179,11 +179,11 @@
             let currentState = 'none';
 
             for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
+                let line = lines[i].trim();
                 if (!line) continue;
 
-                // प्रश्न ढूँढना (1. या 1))
-                const qMatch = line.match(/^(\d+)[\.\)]\s*(.*)/);
+                // स्मार्ट प्रश्न पहचान (आगे-पीछे थोड़ा स्पेस, ब्रैकेट या डैश हो तो भी पकड़ेगा)
+                const qMatch = line.match(/^[\(\[]?\s*(\d+)[\.\)]\s*(.*)/);
                 if (qMatch) {
                     if (currentQ) questions.push(currentQ);
                     currentQ = { 
@@ -197,8 +197,8 @@
                     continue;
                 }
 
-                // ऑप्शन ढूँढना (A., a., (a), (A) आदि)
-                const optMatch = line.match(/^[\(\[]?([A-Da-d])[\)\]][\.\s]?(.*)/) || line.match(/^([A-Da-d])[\.\)]\s*(.*)/);
+                // स्मार्ट ऑप्शन पहचान (a., A., (a), [a] आदि को लचीले ढंग से ट्रैक करेगा)
+                const optMatch = line.match(/^[\(\[]?\s*([A-Da-d])\s*[\)\]][\.\s]?(.*)/) || line.match(/^([A-Da-d])[\.\)]\s*(.*)/);
                 if (optMatch && currentQ) {
                     const key = optMatch[1].toUpperCase();
                     if(currentQ.options.hasOwnProperty(key)) {
@@ -208,8 +208,8 @@
                     continue;
                 }
 
-                // उत्तर ढूँढना (उत्तर: (d) या उत्तर - A आदि)
-                const ansMatch = line.match(/^(?:सही उत्तर|उत्तर|Correct Option|Answer)\s*[:\-]\s*(?:[\(\[]?([A-Da-d])[\)\]]?)?(.*)/i);
+                // स्मार्ट उत्तर पहचान (उत्तर, Ans, Correct आदि)
+                const ansMatch = line.match(/^(?:सही उत्तर|उत्तर|Correct Option|Answer|Ans)\s*[:\-]?\s*(?:[\(\[]?([A-Da-d])[\)\]]?)?(.*)/i);
                 if (ansMatch && currentQ) {
                     if (ansMatch[1]) {
                         currentQ.answer = ansMatch[1].toUpperCase();
@@ -221,14 +221,15 @@
                     continue;
                 }
 
-                // व्याख्या ढूँढना
-                const solMatch = line.match(/^(?:व्याख्या|स्पष्टीकरण|Solution)\s*[:\-]\s*(.*)/i);
+                // स्मार्ट व्याख्या पहचान (व्याख्या, Solution, स्पष्टीकरण आदि)
+                const solMatch = line.match(/^(?:व्याख्या|स्पष्टीकरण|Solution|Exp)\s*[:\-]?\s*(.*)/i);
                 if (solMatch !== null && currentQ) {
                     currentQ.solution = solMatch[1] ? solMatch[1] : '';
                     currentState = 'solution';
                     continue;
                 }
 
+                // यदि लाइन थोड़ी बहुत लंबी हो या नीचे लाइन में बंटी हो तो यह उसे संभाल लेगा
                 if (currentQ) {
                     if (currentState === 'question') {
                         currentQ.text += '\n' + line;
@@ -261,7 +262,7 @@
             const questions = parseInputText(text);
 
             if (questions.length === 0) {
-                alert('कोई सही प्रश्न नहीं मिला! कृपया सुनिश्चित करें कि प्रश्न "1." से शुरू हों और ऑप्शन "(a)" या "A." से।');
+                alert('प्रश्न पहचानने में समस्या आ रही है। कृपया सुनिश्चित करें कि प्रश्न नंबर (जैसे 1., 2.) से शुरू हों।');
                 return;
             }
 
@@ -269,7 +270,6 @@
 
             questions.forEach((q, index) => {
                 const qNum = index + 1;
-                // अब हर प्रश्न के ऊपर #Hindi_directions आ जाएगा
                 result += `#Hindi_directions\n`;
                 result += `#Question ${qNum}\n`;
                 result += `${q.text}\n`;
