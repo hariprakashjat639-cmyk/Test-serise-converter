@@ -214,7 +214,6 @@
                     if (ansMatch[1]) {
                         currentQ.answer = ansMatch[1].toUpperCase();
                     } else {
-                        // यदि सिर्फ अक्षर बिना कोष्ठक के हो
                         const directLetter = line.match(/([A-Da-d])/);
                         if (directLetter) currentQ.answer = directLetter[1].toUpperCase();
                     }
@@ -266,10 +265,12 @@
                 return;
             }
 
-            let result = "#Hindi_directions\n\n";
+            let result = "";
 
             questions.forEach((q, index) => {
                 const qNum = index + 1;
+                // अब हर प्रश्न के ऊपर #Hindi_directions आ जाएगा
+                result += `#Hindi_directions\n`;
                 result += `#Question ${qNum}\n`;
                 result += `${q.text}\n`;
                 result += `#Options ###A\n${q.options.A || ''}\n`;
