@@ -12,11 +12,15 @@ from docx import Document
 import io
 
 # ---------- DeepSeek API Configuration ----------
-# Hugging Face Secrets में DEEPSEEK_API_KEY set करें
 DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY", os.getenv("DEEPSEEK_API_KEY", ""))
 
-openai.api_key = DEEPSEEK_API_KEY
-openai.api_base = "https://api.deepseek.com"  # DeepSeek API base
+# नए OpenAI library (>=1.0.0) के लिए
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com"
+)
 
 # ---------- Helper Functions ----------
 def extract_text_from_pdf(pdf_path):
@@ -84,7 +88,7 @@ Text:
 {text}
 """
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that extracts structured data from text."},
@@ -126,7 +130,7 @@ Text:
 {text}
 """
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
                 {"role": "system", "content": "You extract one question from text."},
