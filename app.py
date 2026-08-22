@@ -7,25 +7,24 @@ import fitz  # PyMuPDF
 import pytesseract
 from pdf2image import convert_from_path
 from PIL import Image
-import openai
+import google.generativeai as genai
 from docx import Document
 import io
+import re
 
-# ---------- DeepSeek API Configuration ----------
-DEEPSEEK_API_KEY = st.secrets.get("DEEPSEEK_API_KEY", os.getenv("DEEPSEEK_API_KEY", ""))
+# ---------- Gemini API Configuration ----------
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 
-# नए OpenAI library (>=1.0.0) के लिए
-from openai import OpenAI
-
-client = OpenAI(
-    api_key=DEEPSEEK_API_KEY,
-    base_url="https://api.deepseek.com"
-)
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    # Model selection (free tier)
+    MODEL_NAME = "gemini-1.5-flash"   # या "gemini-2.0-flash" if available
+else:
+    MODEL_NAME = None
 
 # ---------- Helper Functions ----------
 def extract_text_from_pdf(pdf_path):
     """PDF से text निकालें। पहले direct text try करें, अगर न मिले तो OCR करें।"""
-    # Direct text extraction
     doc = fitz.open(pdf_path)
     text = "\n".join(page.get_text("text") for page in doc)
     doc.close()
@@ -40,28 +39,32 @@ def extract_text_from_pdf(pdf_path):
         ocr_text += pytesseract.image_to_string(img, lang="hin+eng") + "\n"
     return ocr_text.strip(), True
 
-def parse_deepseek_json_response(response_text):
-    """DeepSeek से आए text में से JSON array निकालें।"""
+def parse_json_from_text(response_text):
+    """AI से आए text में से JSON array/object निकालें।"""
     try:
-        # पहले सीधा json.loads try करें
         return json.loads(response_text)
     except:
         pass
 
-    # अगर JSON extra text में wrapped है तो निकालें
-    import re
-    match = re.search(r'\[.*\]', response_text, re.DOTALL)
-    if match:
+    # JSON array/object निकालने की कोशिश
+    m = re.search(r'\[.*\]', response_text, re.DOTALL)
+    if m:
         try:
-            return json.loads(match.group(0))
+            return json.loads(m.group(0))
+        except:
+            pass
+    m = re.search(r'\{.*\}', response_text, re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group(0))
         except:
             pass
     return None
 
-def extract_questions_with_deepseek(text, question_numbers):
-    """DeepSeek AI से text में से specified question numbers निकालें।"""
-    if not DEEPSEEK_API_KEY:
-        st.error("DeepSeek API key नहीं मिला। कृपया Secrets में DEEPSEEK_API_KEY set करें।")
+def extract_questions_with_gemini(text, question_numbers):
+    """Gemini AI से text में से specified question numbers निकालें।"""
+    if not GEMINI_API_KEY:
+        st.error("Gemini API key नहीं मिला। कृपया Secrets में GEMINI_API_KEY set करें।")
         return []
 
     prompt = f"""
@@ -88,24 +91,23 @@ Text:
 {text}
 """
     try:
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that extracts structured data from text."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.1,
-            max_tokens=4000
-        )
-        result_text = response.choices[0].message.content
-        return parse_deepseek_json_response(result_text) or []
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt)
+        result_text = response.text
+        parsed = parse_json_from_text(result_text)
+        if isinstance(parsed, list):
+            return parsed
+        elif isinstance(parsed, dict):
+            return [parsed]
+        else:
+            return []
     except Exception as e:
-        st.error(f"DeepSeek API error: {e}")
+        st.error(f"Gemini API error: {e}")
         return []
 
 def fallback_extract_question(text, used_numbers):
     """अगर कोई question number न मिले तो कोई भी unused question निकालें।"""
-    if not DEEPSEEK_API_KEY:
+    if not GEMINI_API_KEY:
         return None
     prompt = f"""
 आप एक शिक्षक सहायक हैं। नीचे दिए गए text में कई प्रश्न हैं। कृपया कोई एक प्रश्न निकालें जो नीचे दिए गए used numbers में नहीं है।
@@ -130,25 +132,11 @@ Text:
 {text}
 """
     try:
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "You extract one question from text."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.1,
-            max_tokens=1500
-        )
-        result_text = response.choices[0].message.content
-        # JSON object parse करें
-        import re
-        match = re.search(r'\{.*\}', result_text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(0))
-            except:
-                return None
-        return None
+        model = genai.GenerativeModel(MODEL_NAME)
+        response = model.generate_content(prompt)
+        result_text = response.text
+        parsed = parse_json_from_text(result_text)
+        return parsed if isinstance(parsed, dict) else None
     except:
         return None
 
@@ -179,29 +167,24 @@ def create_model_paper_docx(questions):
     return buffer
 
 # ---------- Streamlit UI ----------
-st.set_page_config(page_title="PDF से मॉडल पेपर जेनरेटर", layout="wide")
-st.title("📄 PDF से मॉडल पेपर जेनरेटर (DeepSeek AI + OCR)")
-st.markdown("अपनी PDFs upload करें, प्रश्न संख्याएँ चुनें, और DeepSeek AI आपके लिए मॉडल पेपर तैयार कर देगा।")
+st.set_page_config(page_title="PDF से मॉडल पेपर जेनरेटर (Gemini AI + OCR)", layout="wide")
+st.title("📄 PDF से मॉडल पेपर जेनरेटर (Gemini AI + OCR)")
+st.markdown("अपनी PDFs upload करें, प्रश्न संख्याएँ चुनें, और Gemini AI आपके लिए मॉडल पेपर तैयार कर देगा।")
 
 uploaded_files = st.file_uploader("PDF files चुनें (आप एक साथ कई upload कर सकते हैं)", type="pdf", accept_multiple_files=True)
 
-# Global question numbers
 question_numbers_input = st.text_input(
     "प्रत्येक PDF से कौन-सी प्रश्न संख्याएँ निकालनी हैं? (comma separated, जैसे: 1,2 या 3,4)",
     value="1,2"
 )
 
-col1, col2 = st.columns(2)
-with col1:
-    force_ocr = st.checkbox("हमेशा OCR use करें (अगर text garbled है)", value=True)
-with col2:
-    total_questions = st.empty()
+force_ocr = st.checkbox("हमेशा OCR use करें (अगर text garbled है)", value=True)
 
 if st.button("🚀 मॉडल पेपर बनाएं", type="primary"):
     if not uploaded_files:
         st.warning("कृपया कम से कम एक PDF upload करें।")
-    elif not DEEPSEEK_API_KEY:
-        st.error("DeepSeek API key नहीं मिला। कृपया Secrets में DEEPSEEK_API_KEY set करें।")
+    elif not GEMINI_API_KEY:
+        st.error("Gemini API key नहीं मिला। कृपया Secrets में GEMINI_API_KEY set करें।")
     else:
         try:
             question_numbers = [int(x.strip()) for x in question_numbers_input.split(',') if x.strip()]
@@ -216,7 +199,6 @@ if st.button("🚀 मॉडल पेपर बनाएं", type="primary"):
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-        # अस्थायी फोल्डर में PDFs save करें
         with tempfile.TemporaryDirectory() as tmpdir:
             pdf_paths = []
             for uploaded_file in uploaded_files:
@@ -232,7 +214,6 @@ if st.button("🚀 मॉडल पेपर बनाएं", type="primary"):
 
                 # Text extraction
                 if force_ocr:
-                    # हमेशा OCR
                     images = convert_from_path(pdf_path, dpi=300)
                     text = ""
                     for img in images:
@@ -240,8 +221,8 @@ if st.button("🚀 मॉडल पेपर बनाएं", type="primary"):
                 else:
                     text, _ = extract_text_from_pdf(pdf_path)
 
-                # DeepSeek से extraction
-                extracted = extract_questions_with_deepseek(text, question_numbers)
+                # Gemini से extraction
+                extracted = extract_questions_with_gemini(text, question_numbers)
 
                 # अगर कुछ expected numbers missing हों तो fallback से भरें
                 if len(extracted) < len(question_numbers):
@@ -254,7 +235,6 @@ if st.button("🚀 मॉडल पेपर बनाएं", type="primary"):
                             if fallback_q.get('found_number'):
                                 used_numbers.add(fallback_q['found_number'])
 
-                # सिर्फ valid questions add करें
                 for q in extracted:
                     if q.get('question_text') and q.get('found_number') is not None:
                         q['source_pdf'] = os.path.basename(pdf_path)
@@ -268,7 +248,6 @@ if st.button("🚀 मॉडल पेपर बनाएं", type="primary"):
         if all_questions:
             st.success(f"कुल {len(all_questions)} प्रश्न निकाले गए।")
 
-            # Model paper Word file बनाएं
             docx_buffer = create_model_paper_docx(all_questions)
 
             st.download_button(
@@ -278,7 +257,6 @@ if st.button("🚀 मॉडल पेपर बनाएं", type="primary"):
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
-            # JSON download
             json_str = json.dumps(all_questions, ensure_ascii=False, indent=2)
             st.download_button(
                 label="📥 JSON डेटा डाउनलोड करें",
@@ -287,7 +265,6 @@ if st.button("🚀 मॉडल पेपर बनाएं", type="primary"):
                 mime="application/json"
             )
 
-            # Preview
             with st.expander("🔍 प्रश्न Preview देखें"):
                 for i, q in enumerate(all_questions, 1):
                     st.markdown(f"**प्रश्न {i}:** {q['question_text']}")
