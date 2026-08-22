@@ -17,8 +17,8 @@ GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    # ✅ सही model name (free tier)
-    MODEL_NAME = "gemini-2.0-flash"
+    # ✅ नया model name (free tier)
+    MODEL_NAME = "gemini-3.6-flash"
 else:
     MODEL_NAME = None
 
