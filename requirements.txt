@@ -3,5 +3,5 @@ pymupdf
 pdf2image
 pytesseract
 Pillow
-openai>=1.0.0
+google-generativeai
 python-docx
