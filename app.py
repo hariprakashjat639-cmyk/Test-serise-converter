@@ -17,8 +17,8 @@ GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    # Model selection (free tier)
-    MODEL_NAME = "gemini-1.5-flash"   # या "gemini-2.0-flash" if available
+    # ✅ सही model name (free tier)
+    MODEL_NAME = "gemini-2.0-flash"
 else:
     MODEL_NAME = None
 
@@ -46,13 +46,14 @@ def parse_json_from_text(response_text):
     except:
         pass
 
-    # JSON array/object निकालने की कोशिश
+    # JSON array निकालने की कोशिश
     m = re.search(r'\[.*\]', response_text, re.DOTALL)
     if m:
         try:
             return json.loads(m.group(0))
         except:
             pass
+    # JSON object निकालने की कोशिश
     m = re.search(r'\{.*\}', response_text, re.DOTALL)
     if m:
         try:
